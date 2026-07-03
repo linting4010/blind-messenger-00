@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>盲区信使</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; touch-action: none; }
+canvas { display: block; width: 100%; height: 100%; background: #000; }
+#ui-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+#tutorial { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; display: none; }
+#tutorial.active { display: block; }
+#tutorial .gesture { position: absolute; opacity: 0; animation: gestureAnim 1.2s ease-in-out infinite; }
+#tutorial .gesture:nth-child(1) { left: 15%; top: 50%; width: 80px; height: 80px; animation-delay: 0s; }
+#tutorial .gesture:nth-child(2) { right: 15%; top: 20%; width: 70px; height: 70px; animation-delay: 0.4s; }
+#tutorial .gesture:nth-child(3) { right: 12%; bottom: 15%; width: 60px; height: 60px; animation-delay: 0.8s; }
+@keyframes gestureAnim { 0% { opacity: 0; transform: scale(0.5) translateY(10px); } 30% { opacity: 0.7; transform: scale(1) translateY(0); } 70% { opacity: 0.7; transform: scale(1) translateY(0); } 100% { opacity: 0; transform: scale(0.5) translateY(-10px); } }
+#tutorial svg { width: 100%; height: 100%; filter: drop-shadow(0 0 6px rgba(0,255,204,0.5)); }
+#tutorial .label { position: absolute; color: rgba(255,255,255,0.8); font-size: 13px; font-family: sans-serif; text-align: center; letter-spacing: 1px; }
+#tutorial .label:nth-child(4) { left: 10%; top: calc(50% + 45px); }
+#tutorial .label:nth-child(5) { right: 10%; top: calc(20% + 40px); }
+#tutorial .label:nth-child(6) { right: 5%; bottom: calc(15% - 35px); }
+#hud { position: fixed; top: 12px; left: 0; width: 100%; padding: 0 16px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 15; font-family: 'Courier New', monospace; }
+#hud .hud-left, #hud .hud-right { display: flex; flex-direction: column; gap: 4px; }
+#hud .pulse-indicator { display: flex; align-items: center; gap: 6px; }
+#hud .pulse-bar-bg { width: 60px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; }
+#hud .pulse-bar-fill { height: 100%; background: #00ffcc; border-radius: 2px; transition: width 0.05s; }
+#hud .breath-indicator { color: rgba(255,255,255,0.5); font-size: 11px; transition: color 0.3s, opacity 0.3s; }
+#hud .breath-indicator.active { color: #88ccff; opacity: 1; }
+#hud .breath-indicator.hidden { opacity: 0.2; }
+#hud .stat { color: rgba(255,255,255,0.6); font-size: 11px; }
+#hud .stat span { color: #00ffcc; }
+#level-complete { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 30; background: rgba(0,0,0,0.85); font-family: 'Courier New', monospace; }
+#level-complete.active { display: flex; }
+#level-complete h1 { color: #ffd700; font-size: 28px; margin-bottom: 8px; text-shadow: 0 0 20px rgba(255,215,0,0.5); letter-spacing: 4px; }
+#level-complete .subtitle { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 30px; }
+#level-complete .seals { display: flex; gap: 24px; margin-bottom: 30px; }
+#level-complete .seal { width: 70px; height: 70px; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 28px; transition: all 0.5s; }
+#level-complete .seal.earned { border-color: #00ffcc; box-shadow: 0 0 15px rgba(0,255,204,0.3); }
+#level-complete .seal.earned.gold { border-color: #ffd700; box-shadow: 0 0 15px rgba(255,215,0,0.3); }
+#level-complete .seal-name { font-size: 9px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+#level-complete .seal.earned .seal-name { color: rgba(255,255,255,0.8); }
+#level-complete .legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 20px; padding: 0 20px; }
+#level-complete .legend-item { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.5); font-size: 11px; }
+#level-complete .legend-item .swatch { width: 20px; height: 2px; border-radius: 1px; }
+#btn-restart { margin-top: 24px; padding: 10px 32px; background: transparent; border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.7); font-size: 14px; font-family: 'Courier New', monospace; cursor: pointer; pointer-events: all; transition: all 0.3s; letter-spacing: 2px; }
+#btn-restart:hover { border-color: #00ffcc; color: #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.2); }
+#charge-indicator { position: fixed; bottom: 120px; right: 20px; pointer-events: none; z-index: 12; display: none; font-family: 'Courier New', monospace; color: #00ffcc; font-size: 11px; opacity: 0.8; letter-spacing: 1px; }
+#charge-indicator.active { display: block; animation: chargePulse 0.3s ease-in-out infinite alternate; }
+@keyframes chargePulse { from { opacity: 0.5; } to { opacity: 1; } }
+#start-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 35; background: #000; font-family: 'Courier New', monospace; }
+#start-screen.hidden { display: none; }
+#start-screen h1 { color: #00ffcc; font-size: 32px; letter-spacing: 6px; text-shadow: 0 0 20px rgba(0,255,204,0.3); margin-bottom: 4px; }
+#start-screen .sub { color: rgba(255,255,255,0.35); font-size: 13px; letter-spacing: 3px; margin-bottom: 20px; }
+#start-screen .death-msg { color: #ff3344; font-size: 13px; min-height: 20px; margin-bottom: 16px; opacity: 0; transition: opacity 0.5s; letter-spacing: 2px; }
+#start-screen .death-msg.show { opacity: 1; }
+#start-screen .btn-start { padding: 10px 36px; background: transparent; border: 1px solid rgba(0,255,204,0.4); color: #00ffcc; font-size: 15px; font-family: 'Courier New', monospace; cursor: pointer; pointer-events: all; letter-spacing: 4px; transition: all 0.3s; margin-bottom: 12px; }
+#start-screen .btn-start:hover { box-shadow: 0 0 15px rgba(0,255,204,0.2); background: rgba(0,255,204,0.05); }
+#start-screen .btn-info { padding: 6px 20px; background: transparent; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.4); font-size: 11px; font-family: 'Courier New', monospace; cursor: pointer; pointer-events: all; letter-spacing: 2px; transition: all 0.3s; margin-bottom: 20px; }
+#start-screen .btn-info:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.6); }
+#start-screen .controls-info { color: rgba(255,255,255,0.2); font-size: 10px; text-align: center; line-height: 1.8; letter-spacing: 1px; }
+#start-screen .controls-info kbd { display: inline-block; border: 1px solid rgba(255,255,255,0.15); padding: 0 5px; border-radius: 2px; font-size: 9px; font-family: 'Courier New', monospace; color: rgba(255,255,255,0.35); margin: 0 2px; }
+#info-panel { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 40; background: rgba(0,0,0,0.95); font-family: 'Courier New', monospace; }
+#info-panel.active { display: flex; }
+#info-panel .panel-inner { max-width: 420px; width: 85%; padding: 24px; }
+#info-panel h2 { color: #00ffcc; font-size: 18px; letter-spacing: 3px; margin-bottom: 20px; text-align: center; }
+#info-panel .entry { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
+#info-panel .entry .dot { flex-shrink: 0; width: 10px; height: 10px; margin-top: 3px; border-radius: 50%; }
+#info-panel .entry .text { color: rgba(255,255,255,0.65); font-size: 12px; line-height: 1.6; letter-spacing: 0.5px; }
+#info-panel .entry .text strong { color: rgba(255,255,255,0.85); }
+#info-panel .entry .text .key { display: inline-block; border: 1px solid rgba(255,255,255,0.2); padding: 0 5px; border-radius: 2px; font-size: 10px; font-family: 'Courier New', monospace; color: rgba(255,255,255,0.5); }
+#info-panel .btn-close { margin-top: 20px; padding: 8px 28px; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.4); font-size: 12px; font-family: 'Courier New', monospace; cursor: pointer; pointer-events: all; letter-spacing: 2px; }
+#info-panel .btn-close:hover { border-color: rgba(255,255,255,0.4); color: rgba(255,255,255,0.6); }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="start-screen">
+  <h1>盲区信使</h1>
+  <div class="sub">— 声呐平台跳跃 —</div>
+  <div class="death-msg" id="death-msg"></div>
+  <button class="btn-start" id="btn-start">开始</button>
+  <button class="btn-info" id="btn-info">说明</button>
+  <div class="controls-info">
+    <kbd>←→</kbd> <kbd>A D</kbd> 移动 · <kbd>E</kbd> 声呐 · <kbd>空格</kbd> 跳跃<br>
+    左滑移动 · 右点声呐 · 右下跳跃 · 全松憋气
+  </div>
+</div>
+
+<div id="info-panel">
+  <div class="panel-inner">
+    <h2>操作说明</h2>
+    <div class="entry">
+      <div class="dot" style="background:#00ffcc;box-shadow:0 0 6px #00ffcc;"></div>
+      <div class="text"><strong>声呐脉冲</strong><br>自动每 <span class="key">2</span> 秒小范围探测。<span class="key">E</span> / 点击右上 手动大范围探测。脉冲会暴露你的位置给附近的怪物。</div>
+    </div>
+    <div class="entry">
+      <div class="dot" style="background:#88ccff;box-shadow:0 0 6px #88ccff;"></div>
+      <div class="text"><strong>憋气潜行</strong><br>松开所有按键 → 角色变暗、移速提升。怪物会失去你的踪迹。</div>
+    </div>
+    <div class="entry">
+      <div class="dot" style="background:#ff3344;box-shadow:0 0 6px #ff3344;"></div>
+      <div class="text"><strong>追音者</strong><br>红色虚线怪物。被声呐惊动后会朝你移动。憋气可躲避。</div>
+    </div>
+    <div class="entry">
+      <div class="dot" style="background:#ffd700;box-shadow:0 0 6px #ffd700;"></div>
+      <div class="text"><strong>信标</strong><br>金色脉动目标。将包裹送达即可过关。</div>
+    </div>
+    <div class="entry">
+      <div class="dot" style="background:rgba(255,255,255,0.3);"></div>
+      <div class="text"><strong>平台</strong><br>亮青实线 = 安全地面 · 亮青虚线 = 桥梁<br>脚下微光 = 站立处（黑暗中唯一触感提示）</div>
+    </div>
+    <button class="btn-close" id="btn-info-close">关闭</button>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="hud-left">
+    <div class="pulse-indicator">
+      <span class="stat" style="color:rgba(255,255,255,0.4);font-size:10px;">声呐</span>
+      <div class="pulse-bar-bg"><div class="pulse-bar-fill" id="pulse-bar" style="width:100%"></div></div>
+    </div>
+    <div class="breath-indicator" id="breath-indicator">○ 憋气潜行</div>
+  </div>
+  <div class="hud-right">
+    <div class="stat">脉冲 <span id="pulse-count">0</span></div>
+  </div>
+</div>
+
+<div id="tutorial">
+  <div class="gesture" style="top:50%;left:15%;">
+    <svg viewBox="0 0 80 80" fill="none" stroke="#00ffcc" stroke-width="1.5" opacity="0.6">
+      <circle cx="40" cy="40" r="20" stroke-dasharray="4 3"/>
+      <line x1="40" y1="25" x2="40" y2="20" stroke="#00ffcc" stroke-width="2"/>
+      <line x1="40" y1="55" x2="40" y2="60" stroke="#00ffcc" stroke-width="2"/>
+      <line x1="25" y1="40" x2="20" y2="40" stroke="#00ffcc" stroke-width="2"/>
+      <line x1="55" y1="40" x2="60" y2="40" stroke="#00ffcc" stroke-width="2"/>
+    </svg>
+    <div class="label" style="left:10%;top:calc(50% + 45px);">滑动移动</div>
+  </div>
+  <div class="gesture" style="top:20%;right:15%;">
+    <svg viewBox="0 0 70 70" fill="none" stroke="#00ffcc" stroke-width="1.5" opacity="0.6">
+      <circle cx="35" cy="35" r="16" stroke-dasharray="4 3"/>
+      <circle cx="35" cy="35" r="28" stroke-dasharray="2 6" opacity="0.4"/>
+      <line x1="35" y1="5" x2="35" y2="15" stroke="#00ffcc" stroke-width="1.5"/>
+      <line x1="35" y1="55" x2="35" y2="65" stroke="#00ffcc" stroke-width="1.5"/>
+      <line x1="5" y1="35" x2="15" y2="35" stroke="#00ffcc" stroke-width="1.5"/>
+      <line x1="55" y1="35" x2="65" y2="35" stroke="#00ffcc" stroke-width="1.5"/>
+    </svg>
+    <div class="label" style="right:10%;top:calc(20% + 40px);">点击声呐</div>
+  </div>
+  <div class="gesture" style="bottom:15%;right:12%;">
+    <svg viewBox="0 0 60 60" fill="none" stroke="#88ccff" stroke-width="1.5" opacity="0.6">
+      <circle cx="30" cy="30" r="24" stroke-dasharray="3 3"/>
+      <polygon points="30,12 36,28 30,24 24,28" fill="#88ccff" opacity="0.4"/>
+      <line x1="30" y1="24" x2="30" y2="42" stroke="#88ccff" stroke-width="1.5"/>
+    </svg>
+    <div class="label" style="right:5%;bottom:calc(15% - 35px);">点击跳跃</div>
+  </div>
+</div>
+
+<div id="charge-indicator">⟐ 蓄力中...</div>
+
+<div id="level-complete">
+  <h1>✦ 送达 ✦</h1>
+  <div class="subtitle">第一关 · 回声走廊</div>
+  <div class="seals">
+    <div class="seal" id="seal-mission"><span>📬</span><span class="seal-name">使命信</span></div>
+    <div class="seal" id="seal-dark"><span>🌙</span><span class="seal-name">暗夜信</span></div>
+    <div class="seal" id="seal-echo"><span>⚡</span><span class="seal-name">回声信</span></div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="swatch" style="background:#00ffcc;"></div> 亮青=地面</div>
+    <div class="legend-item"><div class="swatch" style="background:#00ffcc;border:1px dashed #00ffcc;"></div> 亮青虚线=桥梁</div>
+    <div class="legend-item"><div class="swatch" style="background:#ff3344;"></div> 血红=怪物</div>
+    <div class="legend-item"><div class="swatch" style="background:#88ccff;"></div> ▲ 跳跃</div>
+  </div>
+  <button id="btn-restart">再送一次</button>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ===== 配置 =====
+const GROUND_Y = 460;
+const CFG = {
+  GRAVITY: 820, JUMP_VEL: -390, MOVE_SPEED: 175,
+  BREATH_SPEED_MULT: 1.18, PLAYER_W: 16, PLAYER_H: 24,
+  PULSE_SPEED: 420, MANUAL_PULSE_R: 350, AUTO_PULSE_R: 130,
+  AUTO_PULSE_INTERVAL: 2.0, PING_DURATION: 0.6, PING_MONSTER: 1.0,
+  MONSTER_SPEED: 55, WORLD_W: 2400, WORLD_H: 600,
+};
+
+// ===== 音频 =====
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function playTone(freq, dur, type, vol) {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = type || 'sine'; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol || 0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+function playPulseSound() { playTone(1200, 0.2, 'sine', 0.15); }
+function playPingSound(pitch) { playTone(600 + pitch * 400, 0.12, 'sine', 0.06); }
+function playMonsterSound() { playTone(150, 0.35, 'sawtooth', 0.08); }
+function playJumpSound() { playTone(300, 0.12, 'sine', 0.06); }
+function playDeathSound() { playTone(400, 0.6, 'sawtooth', 0.1); }
+function playWinSound() {
+  [523, 659, 784, 1047].forEach((f, i) => playTone(f, 0.3, 'sine', 0.08));
+}
+function vibrate(pat) { try { navigator.vibrate && navigator.vibrate(pat); } catch(e) {} }
+
+// ===== 关卡数据 =====
+const platforms = [
+  { id:'start', x:50, y:GROUND_Y, w:300, h:20, type:'permanent' },
+  { id:'m1_area', x:380, y:GROUND_Y, w:180, h:20, type:'permanent' },
+  { id:'bridge', x:580, y:GROUND_Y, w:200, h:10, type:'dashed' },
+  { id:'branch', x:800, y:GROUND_Y, w:220, h:20, type:'permanent' },
+  { id:'corridor', x:1050, y:GROUND_Y, w:380, h:20, type:'permanent' },
+  { id:'slope1', x:1450, y:440, w:60, h:20, type:'permanent' },
+  { id:'slope2', x:1510, y:410, w:60, h:20, type:'permanent' },
+  { id:'slope3', x:1570, y:380, w:60, h:20, type:'permanent' },
+  { id:'summit', x:1630, y:350, w:280, h:20, type:'permanent' },
+  { id:'stair1', x:840, y:410, w:50, h:20, type:'permanent' },
+  { id:'stair2', x:900, y:370, w:50, h:20, type:'permanent' },
+  { id:'stair3', x:960, y:330, w:50, h:20, type:'permanent' },
+  { id:'upper_path', x:1040, y:330, w:870, h:20, type:'permanent' },
+];
+const beacon = { x:1850, y:335, w:16, h:18 };
+const monsters = [
+  { id:'M1', x:460, y:GROUND_Y - 24, w:18, h:24, vx:0, state:'idle', aggroTimer:0 },
+  { id:'M2', x:1200, y:GROUND_Y - 24, w:18, h:24, vx:0, state:'idle', aggroTimer:0 },
+];
+
+// ===== 边缘预计算 =====
+let allEdges = [];
+function buildEdges() {
+  allEdges = [];
+  platforms.forEach((p, idx) => {
+    const t = p.type === 'dashed' ? 'dashed' : 'permanent';
+    const eds = [
+      { x1:p.x, y1:p.y, x2:p.x+p.w, y2:p.y, orient:'h' },
+      { x1:p.x, y1:p.y+p.h, x2:p.x+p.w, y2:p.y+p.h, orient:'h' },
+      { x1:p.x, y1:p.y, x2:p.x, y2:p.y+p.h, orient:'v' },
+      { x1:p.x+p.w, y1:p.y, x2:p.x+p.w, y2:p.y+p.h, orient:'v' },
+    ];
+    eds.forEach(ed => { allEdges.push({ ...ed, type:t, platformIdx:idx, revealedAt:-999, pinged:false }); });
+  });
+}
+buildEdges();
+
+// ===== 游戏状态 =====
+const state = {
+  scene: 'start',
+  time: 0, dt: 0,
+  player: { x:80, y:GROUND_Y-24, w:CFG.PLAYER_W, h:CFG.PLAYER_H, vx:0, vy:0, onGround:false, holdingBreath:false, justLanded:false, facing:1 },
+  input: { moveX:0, moveY:0, jumpPressed:false, pulsePressed:false, charging:false, chargeTime:0, touchCount:0 },
+  pulse: { active:false, radius:0, speed:CFG.PULSE_SPEED, autoTimer:0, interval:CFG.AUTO_PULSE_INTERVAL, manual:false, count:0, chargeLevel:0 },
+  pulsePos: null,
+  navArrow: { active:false, timer:0 },
+  seals: { mission:false, dark:false, echo:false },
+  totalPulses: 0, damageTaken: false,
+  particles: [], trails: [],
+};
+const camera = { x:0, y:0 };
+
+// ===== 输入系统 =====
+const touchSt = {
+  joystick: { active:false, id:-1, cx:0, cy:0, dx:0, dy:0 },
+  jumpBtn: { active:false, id:-1 },
+  pulseZone: { active:false, id:-1, tStart:0, lx:0, ly:0 },
+};
+const keys = {};
+
+document.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') e.preventDefault();
+  if (e.key === 'Enter' && state.scene === 'start') startGame();
+  if (e.key === 'Enter' && state.scene === 'complete') goToMenu();
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+function getTouchZone(t, el) {
+  const r = el.getBoundingClientRect();
+  const x = (t.clientX - r.left) / r.width, y = (t.clientY - r.top) / r.height;
+  if (x < 0.5) return 'left';
+  if (y > 0.22) return 'right_bottom';
+  return 'right_top';
+}
+
+function handleTouchStart(e) {
+  e.preventDefault();
+  if (!audioCtx) initAudio();
+  if (state.scene === 'start') { startGame(); return; }
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const t = e.changedTouches[i], zone = getTouchZone(t, canvas);
+    if (zone === 'left' && !touchSt.joystick.active) {
+      touchSt.joystick.active = true; touchSt.joystick.id = t.identifier;
+      const r = canvas.getBoundingClientRect();
+      touchSt.joystick.cx = t.clientX - r.left; touchSt.joystick.cy = t.clientY - r.top;
+      touchSt.joystick.dx = 0; touchSt.joystick.dy = 0;
+      state.input.touchCount++;
+    } else if (zone === 'right_bottom' && !touchSt.jumpBtn.active) {
+      touchSt.jumpBtn.active = true; touchSt.jumpBtn.id = t.identifier;
+      if (state.scene === 'playing') { state.input.jumpPressed = true; state.input.touchCount++; }
+    } else if (zone === 'right_top' && !touchSt.pulseZone.active && !touchSt.jumpBtn.active) {
+      touchSt.pulseZone.active = true; touchSt.pulseZone.id = t.identifier; touchSt.pulseZone.tStart = Date.now();
+      if (state.scene === 'playing') { state.input.pulsePressed = true; state.input.charging = false; state.input.chargeTime = 0; state.input.touchCount++; }
+    }
+  }
+}
+
+function handleTouchMove(e) {
+  e.preventDefault();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const t = e.changedTouches[i], r = canvas.getBoundingClientRect();
+    const tx = t.clientX - r.left, ty = t.clientY - r.top;
+    if (t.identifier === touchSt.joystick.id && touchSt.joystick.active) {
+      const dx = tx - touchSt.joystick.cx, dy = ty - touchSt.joystick.cy, dist = Math.sqrt(dx*dx + dy*dy), maxD = 65;
+      const cl = Math.min(dist, maxD), n = dist > 0 ? 1/dist : 0;
+      touchSt.joystick.dx = dx * n * (cl / maxD); touchSt.joystick.dy = dy * n * (cl / maxD);
+    }
+    if (t.identifier === touchSt.pulseZone.id && touchSt.pulseZone.active) {
+      const relY = ty / r.height;
+      if (relY > 0.22 && !touchSt.jumpBtn.active) {
+        touchSt.jumpBtn.active = true; touchSt.jumpBtn.id = t.identifier;
+        touchSt.pulseZone.active = false;
+        if (state.scene === 'playing') state.input.jumpPressed = true;
+      } else if (state.scene === 'playing') {
+        const el = (Date.now() - touchSt.pulseZone.tStart) / 1000;
+        if (el > 0.3) { state.input.charging = true; state.input.chargeTime = el; }
+      }
+    }
+  }
+}
+
+function handleTouchEnd(e) {
+  e.preventDefault();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const t = e.changedTouches[i];
+    if (t.identifier === touchSt.joystick.id && touchSt.joystick.active) {
+      touchSt.joystick.active = false; touchSt.joystick.id = -1; touchSt.joystick.dx = 0; touchSt.joystick.dy = 0;
+      state.input.touchCount--;
+    }
+    if (t.identifier === touchSt.jumpBtn.id && touchSt.jumpBtn.active) {
+      touchSt.jumpBtn.active = false; touchSt.jumpBtn.id = -1; state.input.touchCount--;
+    }
+    if (t.identifier === touchSt.pulseZone.id && touchSt.pulseZone.active) {
+      touchSt.pulseZone.active = false; touchSt.pulseZone.id = -1;
+      state.input.charging = false; state.input.chargeTime = 0;
+      state.input.touchCount--;
+    }
+  }
+  if (state.input.touchCount < 0) state.input.touchCount = 0;
+}
+
+// ===== 更新输入 =====
+function updateInput(dt) {
+  if (state.scene !== 'playing') return;
+  let mx = 0;
+  if (touchSt.joystick.active) mx = touchSt.joystick.dx;
+  if (keys['ArrowLeft'] || keys['a'] || keys['A']) mx = -1;
+  else if (keys['ArrowRight'] || keys['d'] || keys['D']) mx = 1;
+  state.input.moveX = mx;
+
+  const hasTouch = state.input.touchCount > 0;
+  const anyKey = !!(keys['ArrowLeft'] || keys['ArrowRight'] || keys['ArrowUp'] || keys['a'] || keys['A'] || keys['d'] || keys['D'] || keys['w'] || keys['W'] || keys[' '] || keys['e'] || keys['E']);
+  state.player.holdingBreath = !hasTouch && !anyKey;
+
+  if (state.input.pulsePressed) { if (!state.pulse.active) firePulse(true); state.input.pulsePressed = false; }
+  if (keys['e'] || keys['E']) { if (!state._lastEPulse && !state.pulse.active) firePulse(true); state._lastEPulse = true; } else state._lastEPulse = false;
+  if (state.input.jumpPressed) { doJump(); state.input.jumpPressed = false; }
+  if (keys[' '] || keys['ArrowUp'] || keys['w'] || keys['W']) { if (!state._lastJumpKey) doJump(); state._lastJumpKey = true; } else state._lastJumpKey = false;
+}
+
+// ===== 玩家物理 =====
+function doJump() {
+  const p = state.player;
+  if (p.onGround) { p.vy = CFG.JUMP_VEL; p.onGround = false; playJumpSound(); vibrate(20); }
+}
+
+function checkRectCollision(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function updatePlayer(dt) {
+  const p = state.player, inp = state.input;
+  let spd = CFG.MOVE_SPEED;
+  if (p.holdingBreath) spd *= CFG.BREATH_SPEED_MULT;
+  if (inp.moveX !== 0) { p.vx = inp.moveX * spd; p.facing = inp.moveX > 0 ? 1 : -1; }
+  else { p.vx *= 0.85; if (Math.abs(p.vx) < 5) p.vx = 0; }
+  p.vy += CFG.GRAVITY * dt;
+  if (p.vy > 600) p.vy = 600;
+  p.x += p.vx * dt;
+  p.y += p.vy * dt;
+  p.onGround = false; p.justLanded = false;
+
+  for (let i = 0; i < platforms.length; i++) {
+    const plat = platforms[i];
+    if (checkRectCollision(p, plat)) {
+      if (p.vy >= 0 && p.y + p.h - p.vy * dt <= plat.y + 4) {
+        p.y = plat.y - p.h; p.vy = 0;
+        if (!p.onGround) { p.justLanded = true; vibrate(30); }
+        p.onGround = true;
+      } else if (p.vy < 0 && p.y >= plat.y + plat.h - 4) {
+        p.y = plat.y + plat.h; p.vy = 0;
+      } else if (p.vx > 0 && p.x + p.w - p.vx * dt <= plat.x + 4) {
+        p.x = plat.x - p.w; p.vx = 0;
+      } else if (p.vx < 0 && p.x >= plat.x + plat.w - 4) {
+        p.x = plat.x + plat.w; p.vx = 0;
+      }
+    }
+  }
+  if (p.x < 0) { p.x = 0; p.vx = 0; }
+  if (p.x + p.w > CFG.WORLD_W) { p.x = CFG.WORLD_W - p.w; p.vx = 0; }
+  if (p.y > CFG.WORLD_H + 50) die('坠落虚空');
+  if (Math.abs(p.vx) > 20 || Math.abs(p.vy) > 20) state.trails.push({ x: p.x + p.w/2, y: p.y + p.h/2, life: 0.3 });
+  state.trails = state.trails.filter(t => t.life > 0);
+}
+
+// ===== 声呐脉冲 =====
+function firePulse(manual) {
+  if (state.pulse.active) return;
+  state.pulse.active = true; state.pulse.radius = 0; state.pulse.manual = manual;
+  state.pulse.count++; state.totalPulses++;
+  state.pulse.chargeLevel = state.input.charging ? Math.min(state.input.chargeTime, 1.5) : 0;
+  state.pulsePos = { x: state.player.x + state.player.w/2, y: state.player.y + state.player.h/2 };
+  playPulseSound(); vibrate(50);
+  if (manual) { state.navArrow.active = true; state.navArrow.timer = 1.2; }
+  state.pulse.autoTimer = 0;
+}
+
+function updatePulse(dt) {
+  if (!state.pulse.active) {
+    state.pulse.autoTimer += dt;
+    if (state.pulse.autoTimer >= state.pulse.interval) firePulse(false);
+  }
+  if (state.pulse.active) {
+    let spd = state.pulse.speed;
+    if (state.pulse.chargeLevel > 0) spd *= (1 + state.pulse.chargeLevel * 0.3);
+    state.pulse.radius += spd * dt;
+    const maxR = state.pulse.manual ? CFG.MANUAL_PULSE_R : CFG.AUTO_PULSE_R;
+    const px = state.player.x + state.player.w/2, py = state.player.y + state.player.h/2;
+    const thr = spd * dt + 10;
+    allEdges.forEach(edge => {
+      const mx = (edge.x1 + edge.x2) / 2, my = (edge.y1 + edge.y2) / 2, dist = Math.sqrt((mx-px)**2 + (my-py)**2);
+      if (Math.abs(dist - state.pulse.radius) < thr && state.pulse.radius < maxR && !edge.pinged) {
+        edge.revealedAt = state.time; edge.pinged = true;
+        playPingSound(1 - Math.min(dist / maxR, 1));
+        checkMonsterPing(mx, my);
+      }
+    });
+    const bd = Math.sqrt((beacon.x+beacon.w/2-px)**2 + (beacon.y+beacon.h/2-py)**2);
+    if (Math.abs(bd - state.pulse.radius) < thr && state.pulse.radius < maxR) playPingSound(1);
+    if (state.pulse.radius > maxR) {
+      state.pulse.active = false; state.pulse.radius = 0;
+      allEdges.forEach(e => e.pinged = false);
+    }
+  }
+  if (state.navArrow.active) { state.navArrow.timer -= dt; if (state.navArrow.timer <= 0) state.navArrow.active = false; }
+  const ci = document.getElementById('charge-indicator');
+  if (state.input.charging && state.scene === 'playing') ci.classList.add('active'); else ci.classList.remove('active');
+}
+
+// ===== 怪物 =====
+function checkMonsterPing(mx, my) {
+  monsters.forEach(m => {
+    if (Math.sqrt((m.x+m.w/2-mx)**2 + (m.y+m.h/2-my)**2) < 60 && m.state === 'idle') {
+      m.state = 'aggravated'; playMonsterSound(); vibrate([0,80,60,80]);
+    }
+  });
+}
+
+function updateMonsters(dt) {
+  const pp = state.player, ppcx = pp.x + pp.w/2, ppcy = pp.y + pp.h/2;
+  monsters.forEach(m => {
+    const mc = m.x + m.w/2, mr = m.y + m.h;
+    let onPlat = false;
+    for (let i = 0; i < platforms.length; i++) {
+      const plat = platforms[i];
+      if (mc > plat.x && mc < plat.x + plat.w && mr >= plat.y - 2 && mr <= plat.y + 6) {
+        m.y = plat.y - m.h; onPlat = true; break;
+      }
+    }
+    if (!onPlat) m.y += 120 * dt;
+    switch (m.state) {
+      case 'idle': m.vx = 0; break;
+      case 'aggravated':
+        if (state.pulsePos) {
+          const dx = state.pulsePos.x - m.x, dy = state.pulsePos.y - m.y, d = Math.sqrt(dx*dx+dy*dy);
+          if (d > 5) m.vx = (dx/d) * CFG.MONSTER_SPEED * 1.3;
+        }
+        m.aggroTimer += dt;
+        if (m.aggroTimer > 2.0) { m.state = 'tracking'; m.aggroTimer = 0; }
+        break;
+      case 'tracking':
+        if (pp.holdingBreath) { m.vx *= 0.95; if (Math.abs(m.vx) < 5) { m.vx = 0; m.state = 'idle'; } }
+        else { const dx = ppcx - m.x, d = Math.abs(dx); if (d > 10) m.vx = (dx/d) * CFG.MONSTER_SPEED * 0.6; }
+        break;
+    }
+    m.x += m.vx * dt;
+    if (m.x < 10) m.x = 10; if (m.x + m.w > CFG.WORLD_W - 10) m.x = CFG.WORLD_W - 10 - m.w;
+    if (checkRectCollision(pp, m)) die('被静默怪吞噬');
+  });
+}
+
+// ===== 死亡 & 菜单 =====
+function die(reason) {
+  state.damageTaken = true;
+  playDeathSound(); vibrate([0,80,40,80,40,120]);
+  const dm = document.getElementById('death-msg');
+  dm.textContent = '✕ ' + reason; dm.classList.add('show');
+  goToMenu();
+  setTimeout(() => dm.classList.remove('show'), 3000);
+}
+
+function goToMenu() {
+  const p = state.player;
+  p.x = 80; p.y = GROUND_Y - 24; p.vx = 0; p.vy = 0; p.onGround = false;
+  monsters.forEach(m => { m.state = 'idle'; m.aggroTimer = 0; m.vx = 0; });
+  allEdges.forEach(e => { e.revealedAt = -999; e.pinged = false; });
+  state.pulse.active = false; state.pulse.radius = 0; state.pulse.autoTimer = 0;
+  state.pulse.count = 0; state.totalPulses = 0; state.scene = 'start';
+  state.trails = []; state.particles = []; state.damageTaken = false;
+  state.input.jumpPressed = false; state.input.pulsePressed = false;
+  state.input.charging = false; state.input.chargeTime = 0;
+  state._lastJumpKey = false; state._lastEPulse = false;
+  touchSt.joystick.active = false; touchSt.jumpBtn.active = false; touchSt.pulseZone.active = false;
+  document.getElementById('level-complete').classList.remove('active');
+  document.getElementById('start-screen').classList.remove('hidden');
+}
+
+function respawn() { goToMenu(); }
+
+// ===== 信标 =====
+function checkBeacon() {
+  const p = state.player;
+  if (Math.sqrt((p.x+p.w/2-beacon.x-beacon.w/2)**2 + (p.y+p.h/2-beacon.y-beacon.h/2)**2) < 30) levelComplete();
+}
+
+function levelComplete() {
+  if (state.scene === 'complete') return;
+  state.scene = 'complete'; playWinSound(); vibrate([50,30,50,30,80,40,120]);
+  state.seals.mission = true; state.seals.dark = state.totalPulses <= 20; state.seals.echo = !state.damageTaken;
+  document.getElementById('seal-mission').classList.add('earned');
+  if (state.seals.dark) document.getElementById('seal-dark').classList.add('earned', 'gold');
+  if (state.seals.echo) document.getElementById('seal-echo').classList.add('earned');
+  document.getElementById('level-complete').classList.add('active');
+}
+
+// ===== 粒子 =====
+function spawnParticles(x, y, color, count, speed) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2, s = (Math.random() * 0.5 + 0.5) * speed;
+    state.particles.push({ x, y, color, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: Math.random() * 0.4 + 0.2, maxLife: Math.random() * 0.4 + 0.2 });
+  }
+}
+function updateParticles(dt) {
+  state.particles.forEach(p => { p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.life -= dt; });
+  state.particles = state.particles.filter(p => p.life > 0);
+}
+function updateTrails(dt) {
+  state.trails.forEach(t => t.life -= dt);
+  state.trails = state.trails.filter(t => t.life > 0);
+}
+
+// ===== 相机 =====
+function updateCamera() {
+  const p = state.player;
+  const tx = p.x + p.w/2 - W/2, ty = p.y + p.h/2 - H/2 + 40;
+  camera.x += (tx - camera.x) * 0.08; camera.y += (ty - camera.y) * 0.08;
+  camera.x = Math.max(0, Math.min(CFG.WORLD_W - W, camera.x));
+  camera.y = Math.max(-50, Math.min(CFG.WORLD_H - H + 50, camera.y));
+}
+
+// ===== 渲染 =====
+function render() {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  const cx = camera.x, cy = camera.y, pp = state.player;
+
+  // 脉冲波
+  if (state.pulse.active) {
+    const px = pp.x + pp.w/2 - cx, py = pp.y + pp.h/2 - cy, r = state.pulse.radius;
+    const grad = ctx.createRadialGradient(px, py, r*0.85, px, py, r);
+    grad.addColorStop(0, 'rgba(0,255,204,0)'); grad.addColorStop(0.85, 'rgba(0,255,204,0.08)');
+    grad.addColorStop(0.92, 'rgba(0,255,204,0.15)'); grad.addColorStop(1, 'rgba(0,255,204,0)');
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2); ctx.fillStyle = grad; ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2);
+    ctx.strokeStyle = `rgba(0,255,204,${0.15 + state.pulse.chargeLevel*0.15})`; ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  // 回波边缘
+  const now = state.time;
+  allEdges.forEach(edge => {
+    const el = now - edge.revealedAt;
+    if (el < CFG.PING_DURATION) {
+      const a = 1 - el/CFG.PING_DURATION, sx = edge.x1-cx, sy = edge.y1-cy, ex = edge.x2-cx, ey = edge.y2-cy;
+      if ((sx<-50&&ex<-50)||(sx>W+50&&ex>W+50)||(sy<-50&&ey<-50)||(sy>H+50&&ey>H+50)) return;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey);
+      if (edge.type === 'dashed') {
+        ctx.strokeStyle = `rgba(0,255,204,${a*0.8})`; ctx.lineWidth = 1.5; ctx.setLineDash([8,5]);
+      } else {
+        ctx.strokeStyle = `rgba(0,255,204,${a})`; ctx.lineWidth = 1.2; ctx.setLineDash([]);
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  });
+
+  // 脚下微光
+  if (pp.onGround) {
+    platforms.forEach(plat => {
+      if (pp.y+pp.h >= plat.y-2 && pp.y+pp.h <= plat.y+6 && pp.x+pp.w > plat.x && pp.x < plat.x+plat.w) {
+        ctx.beginPath(); ctx.moveTo(plat.x-cx, plat.y-cy); ctx.lineTo(plat.x+plat.w-cx, plat.y-cy);
+        ctx.strokeStyle = 'rgba(0,255,204,0.08)'; ctx.lineWidth = 1; ctx.stroke();
+      }
+    });
+  }
+
+  // 怪物
+  monsters.forEach(m => {
+    const mx = m.x-cx, my = m.y-cy;
+    if (mx<-50||mx>W+50||my<-50||my>H+50) return;
+    let revealed = false;
+    const mmx = m.x+m.w/2, mmy = m.y+m.h/2;
+    allEdges.forEach(e => {
+      const d = Math.sqrt(((e.x1+e.x2)/2-mmx)**2 + ((e.y1+e.y2)/2-mmy)**2);
+      if (d < 80 && (now - e.revealedAt) < CFG.PING_MONSTER) revealed = true;
+    });
+    if (Math.abs(m.vx) > 20) revealed = true;
+    const a = revealed ? 0.9 : 0.05;
+    ctx.beginPath(); ctx.setLineDash([8,6]);
+    ctx.strokeStyle = `rgba(255,51,68,${a})`; ctx.lineWidth = 3;
+    ctx.shadowColor = `rgba(255,51,68,${a*0.3})`; ctx.shadowBlur = 8;
+    ctx.strokeRect(mx, my, m.w, m.h); ctx.setLineDash([]); ctx.shadowBlur = 0;
+    const dp = Math.sqrt((m.x-pp.x)**2 + (m.y-pp.y)**2);
+    const ia = revealed ? (0.15 + Math.max(0,1-dp/300)*0.3) : 0;
+    if (ia > 0.02) { ctx.fillStyle = `rgba(255,51,68,${ia})`; ctx.fillRect(mx+2, my+2, m.w-4, m.h-4); }
+    if (revealed && a > 0.5) {
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
+      ctx.fillRect(mx+3, my+5, 3, 3); ctx.fillRect(mx+m.w-6, my+5, 3, 3);
+    }
+    if (dp < 200 && revealed) {
+      const ins = Math.max(0, 1-dp/200) * 0.15;
+      ctx.fillStyle = `rgba(255,0,0,${ins})`; ctx.fillRect(0, 0, W, H);
+    }
+  });
+
+  // 信标
+  const bx = beacon.x-cx, by = beacon.y-cy;
+  if (bx > -30 && bx < W+30 && by > -30 && by < H+30) {
+    const ba = 0.3 + Math.sin(state.time*2)*0.15;
+    const grad = ctx.createRadialGradient(bx+beacon.w/2, by+beacon.h/2, 2, bx+beacon.w/2, by+beacon.h/2, 30);
+    grad.addColorStop(0, `rgba(255,215,0,${ba})`); grad.addColorStop(0.5, `rgba(255,215,0,${ba*0.3})`); grad.addColorStop(1, 'rgba(255,215,0,0)');
+    ctx.fillStyle = grad; ctx.fillRect(bx-20, by-20, beacon.w+40, beacon.h+40);
+    ctx.beginPath(); ctx.rect(bx, by, beacon.w, beacon.h);
+    ctx.strokeStyle = `rgba(255,215,0,${0.5+ba})`; ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(255,215,0,0.3)'; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = `rgba(255,215,0,${0.05+ba*0.05})`; ctx.fillRect(bx, by, beacon.w, beacon.h);
+  }
+
+  // 玩家
+  const ppx = pp.x-cx, ppy = pp.y-cy;
+  state.trails.forEach(t => {
+    ctx.beginPath(); ctx.arc(t.x-cx, t.y-cy, 2, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(0,255,204,${t.life*0.3})`; ctx.fill();
+  });
+  const ba = pp.holdingBreath ? 0.4 : 0.9;
+  ctx.shadowColor = pp.holdingBreath ? 'rgba(136,204,255,0.15)' : 'rgba(0,255,204,0.2)';
+  ctx.shadowBlur = pp.holdingBreath ? 4 : 8;
+  ctx.fillStyle = `rgba(255,255,255,${ba})`; ctx.fillRect(ppx, ppy, pp.w, pp.h);
+  ctx.fillStyle = `rgba(0,255,204,${ba*0.3})`; ctx.fillRect(ppx+3, ppy+4, pp.w-6, pp.h-8);
+  ctx.fillStyle = `rgba(255,255,255,${ba*0.6})`;
+  if (pp.facing > 0) ctx.fillRect(ppx+pp.w-2, ppy+pp.h/2-1, 3, 2);
+  else ctx.fillRect(ppx-1, ppy+pp.h/2-1, 3, 2);
+  ctx.shadowBlur = 0;
+  if (pp.justLanded) spawnParticles(pp.x+pp.w/2, pp.y+pp.h, '#00ffcc', 5, 2);
+  state.particles.forEach(p => {
+    ctx.beginPath(); ctx.arc(p.x-cx, p.y-cy, 1.5, 0, Math.PI*2);
+    ctx.fillStyle = p.color + Math.floor(p.life/p.maxLife*255).toString(16).padStart(2,'0'); ctx.fill();
+  });
+
+  // 导航箭头
+  if (state.navArrow.active) {
+    const bcx = beacon.x+beacon.w/2-cx, bcy = beacon.y+beacon.h/2-cy, ang = Math.atan2(bcy-ppy, bcx-ppx);
+    ctx.save(); ctx.translate(W/2+Math.cos(ang)*100, H/2+Math.sin(ang)*80); ctx.rotate(ang);
+    ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(-6,-7); ctx.lineTo(-6,7); ctx.closePath();
+    ctx.fillStyle = `rgba(77,195,255,${0.5+Math.sin(state.time*4)*0.2})`; ctx.fill(); ctx.restore();
+  }
+
+  // ===== 触控常显 =====
+  const jlCX = W * 0.18, jlCY = H * 0.55, jlR = Math.min(W,H) * 0.042;
+  const jlA = touchSt.joystick.active, jlDx = jlA ? touchSt.joystick.dx : 0, jlDy = jlA ? touchSt.joystick.dy : 0;
+  ctx.beginPath(); ctx.arc(jlCX, jlCY, jlR*2.2, 0, Math.PI*2);
+  ctx.strokeStyle = jlA ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(jlCX+jlDx*jlR*1.8, jlCY+jlDy*jlR*1.8, jlR, 0, Math.PI*2);
+  ctx.fillStyle = jlA ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.04)'; ctx.fill();
+  ctx.strokeStyle = jlA ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1; ctx.stroke();
+  if (jlDx > 0.1) { ctx.beginPath(); ctx.moveTo(jlCX+jlR*0.8,jlCY); ctx.lineTo(jlCX+jlR*1.5,jlCY); ctx.strokeStyle='rgba(0,255,204,0.25)'; ctx.lineWidth=1.5; ctx.stroke(); }
+  if (jlDx < -0.1) { ctx.beginPath(); ctx.moveTo(jlCX-jlR*0.8,jlCY); ctx.lineTo(jlCX-jlR*1.5,jlCY); ctx.strokeStyle='rgba(0,255,204,0.25)'; ctx.lineWidth=1.5; ctx.stroke(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.font = '9px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('← 移动 →', jlCX, jlCY+jlR*3.2);
+
+  const phX = W*0.75, phY = H*0.12, pA = touchSt.pulseZone.active;
+  ctx.fillStyle = pA ? 'rgba(0,255,204,0.08)' : 'rgba(0,255,204,0.03)';
+  ctx.beginPath(); ctx.arc(phX, phY, 20, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = pA ? 'rgba(0,255,204,0.2)' : 'rgba(0,255,204,0.07)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(phX, phY, 7, 0, Math.PI*2); ctx.strokeStyle = pA ? 'rgba(0,255,204,0.25)' : 'rgba(0,255,204,0.08)'; ctx.lineWidth=0.8; ctx.stroke();
+  ctx.beginPath(); ctx.arc(phX, phY, 13, 0, Math.PI*2); ctx.strokeStyle = pA ? 'rgba(0,255,204,0.15)' : 'rgba(0,255,204,0.05)'; ctx.lineWidth=0.6; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.font = '8px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('声呐', phX, phY+28);
+
+  const btnX = W*0.88, btnY = H*0.85, btnR = Math.min(W,H)*0.05, bA = touchSt.jumpBtn.active;
+  ctx.beginPath(); ctx.arc(btnX, btnY, btnR, 0, Math.PI*2);
+  ctx.fillStyle = bA ? 'rgba(136,204,255,0.10)' : 'rgba(136,204,255,0.03)'; ctx.fill();
+  ctx.strokeStyle = bA ? 'rgba(136,204,255,0.3)' : 'rgba(136,204,255,0.08)'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(btnX, btnY-btnR*0.3); ctx.lineTo(btnX-btnR*0.25, btnY+btnR*0.15); ctx.lineTo(btnX+btnR*0.25, btnY+btnR*0.15); ctx.closePath();
+  ctx.fillStyle = bA ? 'rgba(136,204,255,0.5)' : 'rgba(136,204,255,0.12)'; ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.font = '8px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('▲ 跳', btnX, btnY+btnR*1.8);
+
+  // 脉冲冷却环
+  if (!state.pulse.active) {
+    const cd = state.pulse.autoTimer / state.pulse.interval;
+    if (cd < 1) {
+      ctx.beginPath(); ctx.arc(ppx+pp.w/2, ppy+pp.h+6, 4, -Math.PI/2, -Math.PI/2+cd*Math.PI*2);
+      ctx.strokeStyle = `rgba(0,255,204,${0.3+cd*0.2})`; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  }
+}
+
+// ===== HUD =====
+function updateHUD() {
+  const fill = state.pulse.active ? 100 : (state.pulse.autoTimer / state.pulse.interval) * 100;
+  document.getElementById('pulse-bar').style.width = Math.min(fill, 100) + '%';
+  document.getElementById('pulse-count').textContent = state.totalPulses;
+  const bi = document.getElementById('breath-indicator');
+  if (state.player.holdingBreath) { bi.classList.add('active'); bi.classList.remove('hidden'); bi.textContent = '● 憋气潜行'; }
+  else if (state.input.touchCount > 0 || state._lastJumpKey || state._lastEPulse || keys['ArrowLeft'] || keys['ArrowRight'] || keys['a'] || keys['A'] || keys['d'] || keys['D']) { bi.classList.remove('active','hidden'); bi.textContent = '○ 暴露中'; }
+  else { bi.classList.remove('active'); bi.classList.add('hidden'); }
+}
+
+// ===== 主循环 =====
+let lastTime = 0;
+function gameLoop(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts; state.time += dt; state.dt = dt;
+  if (state.scene === 'playing') {
+    updateInput(dt); updatePlayer(dt); updateMonsters(dt);
+    updatePulse(dt); updateParticles(dt); updateTrails(dt);
+    updateCamera(); checkBeacon(); updateHUD();
+  }
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// ===== 开始游戏 =====
+function startGame() {
+  initAudio();
+  const p = state.player;
+  p.x = 80; p.y = GROUND_Y - 24; p.vx = 0; p.vy = 0; p.onGround = false;
+  state.time = 0; state.totalPulses = 0; state.damageTaken = false;
+  state.trails = []; state.particles = [];
+  state.seals = { mission: false, dark: false, echo: false };
+  state.pulse.active = false; state.pulse.radius = 0; state.pulse.autoTimer = 0.6;
+  state.pulse.count = 0; state.pulse.manual = false; state.pulsePos = null;
+  state.input.jumpPressed = false; state.input.pulsePressed = false;
+  state.input.charging = false; state.input.chargeTime = 0;
+  state._lastJumpKey = false; state._lastEPulse = false;
+  state.navArrow.active = false;
+  monsters.forEach(m => { m.state = 'idle'; m.aggroTimer = 0; m.vx = 0; m.x = m.id === 'M1' ? 460 : 1200; m.y = GROUND_Y - 24; });
+  allEdges.forEach(e => { e.revealedAt = -999; e.pinged = false; });
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('level-complete').classList.remove('active');
+  document.getElementById('seal-mission').classList.remove('earned');
+  document.getElementById('seal-dark').classList.remove('earned', 'gold');
+  document.getElementById('seal-echo').classList.remove('earned');
+  const tut = document.getElementById('tutorial');
+  tut.classList.add('active');
+  setTimeout(() => tut.classList.remove('active'), 3000);
+  state.scene = 'playing';
+  document.getElementById('pulse-count').textContent = '0';
+}
+
+// ===== 事件绑定 =====
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', respawn);
+document.getElementById('btn-info').addEventListener('click', () => { document.getElementById('info-panel').classList.add('active'); });
+document.getElementById('btn-info-close').addEventListener('click', () => { document.getElementById('info-panel').classList.remove('active'); });
+document.getElementById('info-panel').addEventListener('click', (e) => { if (e.target === e.currentTarget) document.getElementById('info-panel').classList.remove('active'); });
+document.addEventListener('click', (e) => {
+  if (state.scene === 'start' && !e.target.closest('.btn-info') && !e.target.closest('#info-panel')) startGame();
+});
+
+// ===== 启动 =====
+requestAnimationFrame(gameLoop);
+
+})();
+</script>
+</body>
+</html>
