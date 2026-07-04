@@ -86,7 +86,7 @@ canvas{display:block;width:100%;height:100%;background:#000}
   <div class="mbtn" id="btn-infinite">无限回声走廊</div>
   <div class="mbtn-desc">随机地图 · 计时挑战 · 速度评级</div>
   <div class="mbtn mbtn-small" id="btn-info" style="border-color:rgba(255,255,255,.08);color:rgba(255,255,255,.3);font-size:11px;margin-top:6px">说明</div>
-  <div class="controls-info"><kbd>←→</kbd> <kbd>A D</kbd> 移动 · <kbd>E</kbd> 声呐 · <kbd>空格</kbd> 跳跃 · 全松憋气</div>
+  <div class="controls-info"><kbd>←→</kbd> <kbd>A D</kbd> 移动 · <kbd>空格</kbd> <kbd>E</kbd> 声呐 · <kbd>W</kbd> 跳跃 · 全松憋气</div>
 </div>
 <div id="diff-panel">
   <h2>无限回声走廊</h2>
@@ -303,9 +303,9 @@ function uInp(dt){
   const hT=st.inp.tC>0,aK=!!(keys['ArrowLeft']||keys['ArrowRight']||keys['ArrowUp']||keys['a']||keys['A']||keys['d']||keys['D']||keys['w']||keys['W']||keys[' ']||keys['e']||keys['E']);
   st.p.hB=!hT&&!aK;
   if(st.inp.pP){if(!st.pul.a)fP(true);st.inp.pP=false;}
-  if(keys['e']||keys['E']){if(!st._lE&&!st.pul.a)fP(true);st._lE=true;}else st._lE=false;
+  if(keys['e']||keys['E']||keys[' ']){if(!st._lE&&!st.pul.a)fP(true);st._lE=true;}else st._lE=false;
   if(st.inp.jP){jmp();st.inp.jP=false;}
-  if(keys[' ']||keys['ArrowUp']||keys['w']||keys['W']){if(!st._lJ)jmp();st._lJ=true;}else st._lJ=false;
+  if(keys['ArrowUp']||keys['w']||keys['W']){if(!st._lJ)jmp();st._lJ=true;}else st._lJ=false;
 }
 function jmp(){const p=st.p;if(p.onG){p.vy=CFG.JUMP_VEL;p.onG=false;pJ();vib(20);}}
 function rC(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
@@ -451,7 +451,7 @@ function rdr(){
   ctx.beginPath();ctx.arc(jX+jD*jR*1.8,jY, jR,0,Math.PI*2);ctx.fillStyle=jA?'rgba(255,255,255,.15)':'rgba(255,255,255,.04)';ctx.fill();ctx.strokeStyle=jA?'rgba(255,255,255,.2)':'rgba(255,255,255,.07)';ctx.lineWidth=1;ctx.stroke();
   if(jD>.1){ctx.beginPath();ctx.moveTo(jX+jR*.8,jY);ctx.lineTo(jX+jR*1.5,jY);ctx.strokeStyle='rgba(0,255,204,.25)';ctx.lineWidth=1.5;ctx.stroke();}if(jD<-.1){ctx.beginPath();ctx.moveTo(jX-jR*.8,jY);ctx.lineTo(jX-jR*1.5,jY);ctx.strokeStyle='rgba(0,255,204,.25)';ctx.lineWidth=1.5;ctx.stroke();}
   ctx.fillStyle='rgba(255,255,255,.04)';ctx.font='8px "Courier New",monospace';ctx.textAlign='center';ctx.fillText('← 移动 →',jX,jY+jR*3.2);
-  const pH=W*.78,pV=H*.68,pA=tS.pz.a;
+  const pH=W*.88,pV=H*.68,pA=tS.pz.a;
   ctx.fillStyle=pA?'rgba(0,255,204,.08)':'rgba(0,255,204,.03)';ctx.beginPath();ctx.arc(pH,pV,18,0,Math.PI*2);ctx.fill();ctx.strokeStyle=pA?'rgba(0,255,204,.2)':'rgba(0,255,204,.06)';ctx.lineWidth=1;ctx.stroke();
   ctx.beginPath();ctx.arc(pH,pV,6,0,Math.PI*2);ctx.strokeStyle=pA?'rgba(0,255,204,.25)':'rgba(0,255,204,.07)';ctx.lineWidth=.8;ctx.stroke();ctx.beginPath();ctx.arc(pH,pV,12,0,Math.PI*2);ctx.strokeStyle=pA?'rgba(0,255,204,.15)':'rgba(0,255,204,.04)';ctx.lineWidth=.6;ctx.stroke();
   ctx.fillStyle='rgba(255,255,255,.04)';ctx.font='7px "Courier New",monospace';ctx.textAlign='center';ctx.fillText('声呐',pH,pV+25);
