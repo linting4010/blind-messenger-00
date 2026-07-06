@@ -248,8 +248,8 @@ function hideM(){document.getElementById('start-screen').classList.add('hidden')
 function showTut(){const t=document.getElementById('tutorial');t.classList.add('active');setTimeout(()=>t.classList.remove('active'),3000);}
 let pendingMode=null;
 function showKeySelect(mode){pendingMode=mode;document.getElementById('key-panel').classList.add('active');}
-document.getElementById('key-s1').addEventListener('click',()=>{keyS=1;localStorage.setItem('blind_key','1');applyKey();document.getElementById('key-panel').classList.remove('active');if(pendingMode==='basic')startBasic();else if(pendingMode==='inf'){hideM();document.getElementById('diff-panel').classList.add('active');}});
-document.getElementById('key-s2').addEventListener('click',()=>{keyS=2;localStorage.setItem('blind_key','2');applyKey();document.getElementById('key-panel').classList.remove('active');if(pendingMode==='basic')startBasic();else if(pendingMode==='inf'){hideM();document.getElementById('diff-panel').classList.add('active');}});
+document.getElementById('key-s1').addEventListener('click',()=>{keyS=1;localStorage.setItem('blind_key','1');applyKey();document.getElementById('key-panel').classList.remove('active');if(pendingMode==='basic'){hideM();startBasic();}else if(pendingMode==='inf'){hideM();document.getElementById('diff-panel').classList.add('active');}});
+document.getElementById('key-s2').addEventListener('click',()=>{keyS=2;localStorage.setItem('blind_key','2');applyKey();document.getElementById('key-panel').classList.remove('active');if(pendingMode==='basic'){hideM();startBasic();}else if(pendingMode==='inf'){hideM();document.getElementById('diff-panel').classList.add('active');}});
 document.getElementById('key-back').addEventListener('click',()=>{document.getElementById('key-panel').classList.remove('active');pendingMode=null;});
 document.getElementById('btn-basic').addEventListener('click',()=>{showKeySelect('basic');});
 document.getElementById('btn-infinite').addEventListener('click',()=>{showKeySelect('inf');});
