@@ -150,11 +150,11 @@ function pM(){pt(150,.35,'sawtooth',.08)}function pJ(){pt(300,.12,'sine',.06)}
 function pD(){pt(400,.6,'sawtooth',.1)}function pW(){[523,659,784,1047].forEach((f,i)=>pt(f,.3,'sine',.08))}
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 
-// ===== 全球记录 (jsonblob 免费存储, 无需认证) =====
+// ===== 全球记录 (jsonblob) =====
 const RECORD_URL='https://jsonblob.com/api/jsonBlob/019f30c9-f852-774b-ad84-bbae5ee6b4eb';
 let globalRecord=null;
-async function loadRecord(){try{const r=await fetch(RECORD_URL);if(r.ok){const d=await r.json();globalRecord=d;document.getElementById('best-rec').textContent='🏆 最快记录: '+d.time+'s';document.getElementById('best-msg').textContent=d.msg?'「'+d.msg+'」':'';}else{document.getElementById('best-rec').textContent='暂无记录，等你创造！';}}catch(e){document.getElementById('best-rec').textContent='暂无记录，等你创造！';}}
-async function saveRecord(time,msg){try{const data={time:time.toFixed(1),msg:msg,date:new Date().toISOString().split('T')[0]};await fetch(RECORD_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});globalRecord=data;loadRecord();}catch(e){}}
+async function loadRecord(){try{const c2=new AbortController();setTimeout(()=>c2.abort(),3000);const r=await fetch(RECORD_URL,{signal:c2.signal});if(r.ok){const d=await r.json();globalRecord=d;document.getElementById('best-rec').textContent='🏆 最快记录: '+d.time+'s';document.getElementById('best-msg').textContent=d.msg?'「'+d.msg+'」':'';}else throw 1;}catch(e){document.getElementById('best-rec').textContent='暂无记录，等你创造！';}}
+async function saveRecord(time,msg){try{const data={time:time.toFixed(1),msg:msg,date:new Date().toISOString().split('T')[0]};const c2=new AbortController();setTimeout(()=>c2.abort(),3000);await fetch(RECORD_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:c2.signal});globalRecord=data;loadRecord();}catch(e){}}
 loadRecord();
 
 // ===== 按键方案 =====
@@ -194,7 +194,7 @@ function uInp(dt){if(st.sc!=='playing')return;let mx=0;if(tS.js.a)mx=tS.js.dx;if
 function jmp(){const p=st.p;if(p.onG){p.vy=CFG.JUMP_VEL;p.onG=false;pJ();vib(20);}}
 function rC(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 function uPly(dt){const p=st.p,ip=st.inp;let spd=CFG.MOVE_SPEED;if(p.hB)spd*=CFG.BREATH_SPEED_MULT;if(ip.mx!==0){p.vx=ip.mx*spd;p.f=ip.mx>0?1:-1;}else{p.vx*=.85;if(Math.abs(p.vx)<5)p.vx=0;}p.vy+=CFG.GRAVITY*dt;if(p.vy>600)p.vy=600;p.x+=p.vx*dt;p.y+=p.vy*dt;p.onG=false;p.jL=false;
-  for(let i=0;i<platforms.length;i++){const pl=platforms[i];if(rC(p,pl)){if(p.vy>=0&&p.y+p.h-p.vy*dt<=pl.y+4){p.y=pl.y-p.h;p.vy=0;if(!p.onG){p.jL=true;vib(30);}p.onG=true;}else if(p.vy<0&&p.y>=pl.y+pl.h-4){p.y=pl.y+pl.h;p.vy=0;}else if(p.vx>0&&p.x+p.w-p.vx*dt<=plat.x+4){p.x=pl.x-p.w;p.vx=0;}else if(p.vx<0&&p.x>=pl.x+pl.w-4){p.x=pl.x+pl.w;p.vx=0;}}}
+  for(let i=0;i<platforms.length;i++){const pl=platforms[i];if(rC(p,pl)){if(p.vy>=0&&p.y+p.h-p.vy*dt<=pl.y+4){p.y=pl.y-p.h;p.vy=0;if(!p.onG){p.jL=true;vib(30);}p.onG=true;}else if(p.vy<0&&p.y>=pl.y+pl.h-4){p.y=pl.y+pl.h;p.vy=0;}else if(p.vx>0&&p.x+p.w-p.vx*dt<=pl.x+4){p.x=pl.x-p.w;p.vx=0;}else if(p.vx<0&&p.x>=pl.x+pl.w-4){p.x=pl.x+pl.w;p.vx=0;}}}
   if(p.x<0){p.x=0;p.vx=0;}if(p.x+p.w>CFG.WORLD_W){p.x=CFG.WORLD_W-p.w;p.vx=0;}if(p.y>CFG.WORLD_H+50)die('坠落虚空');
   if(Math.abs(p.vx)>20||Math.abs(p.vy)>20)st.trail.push({x:p.x+p.w/2,y:p.y+p.h/2,life:.3});st.trail=st.trail.filter(t=>t.life>0);}
 function fP(m){if(st.pul.a)return;st.pul.a=true;st.pul.r=0;st.pul.m=m;st.pul.cnt++;st.tP++;st.pul.cl=st.inp.ch?Math.min(st.inp.chT,1.5):0;st.pPos={x:st.p.x+st.p.w/2,y:st.p.y+st.p.h/2};pP();vib(50);if(m){st.nA.a=true;st.nA.t=1.2;}st.pul.at=0;}
