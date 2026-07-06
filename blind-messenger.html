@@ -24,7 +24,7 @@ canvas{display:block;width:100%;height:100%;background:#000}
 #level-complete{position:fixed;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;background:rgba(0,0,0,.88);font-family:'Courier New',monospace}
 #level-complete.active{display:flex}
 #level-complete h1{color:#ffd700;font-size:26px;margin-bottom:4px;text-shadow:0 0 20px rgba(255,215,0,.5);letter-spacing:4px}
-#level-complete .sub{color:rgba(255,255,255,.4);font-size:12px;margin-bottom:20px}
+#level-complete sub{color:rgba(255,255,255,.4);font-size:12px;margin-bottom:20px}
 #level-complete .rating{font-size:22px;letter-spacing:2px;margin-bottom:4px;min-height:32px}
 #level-complete .time-display{color:rgba(255,255,255,.5);font-size:13px;margin-bottom:6px}
 #level-complete .record-msg{color:#ffd700;font-size:14px;letter-spacing:2px;margin-bottom:16px;min-height:20px;text-shadow:0 0 10px rgba(255,215,0,.3)}
@@ -150,11 +150,12 @@ function pM(){pt(150,.35,'sawtooth',.08)}function pJ(){pt(300,.12,'sine',.06)}
 function pD(){pt(400,.6,'sawtooth',.1)}function pW(){[523,659,784,1047].forEach((f,i)=>pt(f,.3,'sine',.08))}
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 
-// ===== 全球记录 (jsonblob) =====
+// ===== 全球记录 (双难度分离) =====
 const RECORD_URL='https://jsonblob.com/api/jsonBlob/019f30c9-f852-774b-ad84-bbae5ee6b4eb';
 let globalRecord=null;
-async function loadRecord(){try{const c2=new AbortController();setTimeout(()=>c2.abort(),3000);const r=await fetch(RECORD_URL,{signal:c2.signal});if(r.ok){const d=await r.json();globalRecord=d;document.getElementById('best-rec').textContent='🏆 最快记录: '+d.time+'s';document.getElementById('best-msg').textContent=d.msg?'「'+d.msg+'」':'';}else throw 1;}catch(e){document.getElementById('best-rec').textContent='暂无记录，等你创造！';}}
-async function saveRecord(time,msg){try{const data={time:time.toFixed(1),msg:msg,date:new Date().toISOString().split('T')[0]};const c2=new AbortController();setTimeout(()=>c2.abort(),3000);await fetch(RECORD_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:c2.signal});globalRecord=data;loadRecord();}catch(e){}}
+async function loadRecord(){try{const c2=new AbortController();setTimeout(()=>c2.abort(),3000);const r=await fetch(RECORD_URL,{signal:c2.signal});if(r.ok){const d=await r.json();globalRecord=d;showRecord();}else throw 1;}catch(e){document.getElementById('best-rec').textContent='暂无记录，等你创造！';document.getElementById('best-msg').textContent='';}}
+async function saveRecord(time,msg){try{const diff=gameDiff;if(!globalRecord)globalRecord={};const old=globalRecord[diff]||{};if(old.time&&parseFloat(old.time)<=time)return;const entry={time:time.toFixed(1),msg:msg,date:new Date().toISOString().split('T')[0]};globalRecord[diff]=entry;const c2=new AbortController();setTimeout(()=>c2.abort(),3000);await fetch(RECORD_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(globalRecord),signal:c2.signal});showRecord();}catch(e){}}
+function showRecord(){const diff=gameDiff;const entry=globalRecord&&globalRecord[diff];if(entry&&entry.time&&entry.time!=='暂无'){document.getElementById('best-rec').textContent='🏆 '+diff+'模式最快: '+entry.time+'s';document.getElementById('best-msg').textContent=entry.msg?'「'+entry.msg+'」':'';}else{document.getElementById('best-rec').textContent='暂无记录，等你创造！';document.getElementById('best-msg').textContent='';}}
 loadRecord();
 
 // ===== 按键方案 =====
@@ -209,8 +210,9 @@ function lvC(){if(st.sc==='complete')return;st.sc='complete';pW();vib([50,30,50,
   if(isInf){document.getElementById('lc-sub').textContent='无限回声走廊 · '+(gameDiff==='easy'?'简单':'困难');const t=gameTimer;let r,co;
     if(t<30){r='✦ 如此神速，完全第一 ✦';co='#ffd700';}else if(t<40){r='✦ 我承认你很强 ✦';co='#00ffcc';}else if(t<60){r='✦ 还不错吧 ✦';co='#88ccff';}else{r='✦ 还得加把劲啊 ✦';co='rgba(255,255,255,.6)';}
     const rt=document.getElementById('lc-rating');rt.textContent=r;rt.style.color=co;document.getElementById('lc-time').textContent='用时 '+t.toFixed(1)+' 秒';
-    if(globalRecord===null||t<parseFloat(globalRecord.time)){const msg=prompt('🏆 恭喜你创造新纪录！'+t.toFixed(1)+'s\n你有什么想说的吗？','');saveRecord(t,msg||'');rm.textContent='🏆 恭喜你创造新纪录！ '+t.toFixed(1)+'s';}
-    else{rm.textContent='当前最快记录: '+(globalRecord?globalRecord.time+'s':'')+(globalRecord&&globalRecord.msg?' 「'+globalRecord.msg+'」':'');}
+    const diff=gameDiff;const entry=globalRecord&&globalRecord[diff];
+    if(entry===undefined||entry===null||!entry.time||entry.time==='暂无'||t<parseFloat(entry.time)){const msg=prompt('🏆 '+diff+'模式新纪录！'+t.toFixed(1)+'s\n你有什么想说的吗？','');saveRecord(t,msg||'');rm.textContent='🏆 恭喜创造新纪录！ '+t.toFixed(1)+'s';}
+    else{rm.textContent='当前最快: '+(entry?entry.time+'s':'')+(entry&&entry.msg?' 「'+entry.msg+'」':'');}
   }else{document.getElementById('lc-sub').textContent='第一关 · 回声走廊';document.getElementById('lc-rating').textContent='';document.getElementById('lc-rating').style.color='';document.getElementById('lc-time').textContent='';}
   document.getElementById('level-complete').classList.add('active');}
 function sP(x,y,clr,c,spd){for(let i=0;i<c;i++){const a=Math.random()*Math.PI*2,s=(Math.random()*.5+.5)*spd;st.part.push({x,y,color:clr,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:Math.random()*.4+.2,maxL:Math.random()*.4+.2});}}
@@ -242,7 +244,7 @@ function uHUD(){const fill=st.pul.a?100:(st.pul.at/st.pul.iv)*100;document.getEl
 let lT=0;
 function loop(ts){const dt=Math.min((ts-lT)/1000,.05);lT=ts;st.t+=dt;st.dt=dt;if(st.sc==='playing'){uInp(dt);uPly(dt);uMon(dt);uPul(dt);uPart(dt);uTrail(dt);uCam();cB();uHUD();if(isInf)gameTimer+=dt;}rdr();requestAnimationFrame(loop);}
 function startBasic(){iA();loadBasic();const p=st.p;p.x=80;p.y=GY-24;p.vx=0;p.vy=0;p.onG=false;resetSt();document.getElementById('timer-display').style.display='none';st.sc='playing';showTut();document.getElementById('pulse-count').textContent='0';}
-function startInf(diff){iA();loadInf(diff);const p=st.p;if(platforms.length>0){const fp=platforms[0];p.x=fp.x+20;p.y=fp.y-p.h;}resetSt();st.sc='playing';gameTimer=0;document.getElementById('lc-rating').textContent='';document.getElementById('lc-time').textContent='';showTut();document.getElementById('pulse-count').textContent='0';}
+function startInf(diff){iA();loadInf(diff);const p=st.p;if(platforms.length>0){const fp=platforms[0];p.x=fp.x+20;p.y=fp.y-p.h;}resetSt();st.sc='playing';gameTimer=0;document.getElementById('lc-rating').textContent='';document.getElementById('lc-time').textContent='';showRecord();showTut();document.getElementById('pulse-count').textContent='0';}
 function resetSt(){const p=st.p;p.vx=0;p.vy=0;p.onG=false;st.t=0;st.tP=0;st.dT=false;st.trail=[];st.part=[];st.seals={m:false,d:false,e:false};st.pul.a=false;st.pul.r=0;st.pul.at=.6;st.pul.cnt=0;st.pul.m=false;st.pPos=null;st.inp.jP=false;st.inp.pP=false;st.inp.ch=false;st.inp.chT=0;st._lJ=false;st._lE=false;st.nA.a=false;allEdges.forEach(e=>{e.revealedAt=-999;e.pinged=false;});document.getElementById('seal-mission').classList.remove('earned');document.getElementById('seal-dark').classList.remove('earned','gold');document.getElementById('seal-echo').classList.remove('earned');}
 function hideM(){document.getElementById('start-screen').classList.add('hidden');document.getElementById('diff-panel').classList.remove('active');document.getElementById('level-complete').classList.remove('active');document.getElementById('key-panel').classList.remove('active');}
 function showTut(){const t=document.getElementById('tutorial');t.classList.add('active');setTimeout(()=>t.classList.remove('active'),3000);}
