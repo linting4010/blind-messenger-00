@@ -94,6 +94,7 @@ canvas{display:block;width:100%;height:100%;background:#000}
   <h2>无限回声走廊</h2>
   <div class="best-rec" id="best-rec">加载中...</div>
   <div class="best-msg" id="best-msg"></div>
+  <div class="best-rec" id="best-rec2" style="color:rgba(255,255,255,.35);font-size:10px;margin-bottom:10px;letter-spacing:1px;min-height:14px"></div>
   <div class="mbtn" id="btn-easy">简单 · 追音者×5</div>
   <div class="mbtn" id="btn-hard">困难 · 追音者×10</div>
   <div class="mbtn back-btn" id="btn-diff-back">← 返回</div>
@@ -153,9 +154,9 @@ function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 // ===== 全球记录 (双难度分离) =====
 const RECORD_URL='https://jsonblob.com/api/jsonBlob/019f30c9-f852-774b-ad84-bbae5ee6b4eb';
 let globalRecord=null;
-async function loadRecord(){try{const c2=new AbortController();setTimeout(()=>c2.abort(),3000);const r=await fetch(RECORD_URL,{signal:c2.signal});if(r.ok){const d=await r.json();globalRecord=d;showRecord();}else throw 1;}catch(e){document.getElementById('best-rec').textContent='暂无记录，等你创造！';document.getElementById('best-msg').textContent='';}}
+async function loadRecord(){try{const c2=new AbortController();setTimeout(()=>c2.abort(),3000);const r=await fetch(RECORD_URL,{signal:c2.signal});if(r.ok){const d=await r.json();globalRecord=d;showRecord();}else throw 1;}catch(e){showRecord();}}
 async function saveRecord(time,msg){try{const diff=gameDiff;if(!globalRecord)globalRecord={};const old=globalRecord[diff]||{};if(old.time&&parseFloat(old.time)<=time)return;const entry={time:time.toFixed(1),msg:msg,date:new Date().toISOString().split('T')[0]};globalRecord[diff]=entry;const c2=new AbortController();setTimeout(()=>c2.abort(),3000);await fetch(RECORD_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(globalRecord),signal:c2.signal});showRecord();}catch(e){}}
-function showRecord(){const diff=gameDiff;const entry=globalRecord&&globalRecord[diff];if(entry&&entry.time&&entry.time!=='暂无'){document.getElementById('best-rec').textContent='🏆 '+diff+'模式最快: '+entry.time+'s';document.getElementById('best-msg').textContent=entry.msg?'「'+entry.msg+'」':'';}else{document.getElementById('best-rec').textContent='暂无记录，等你创造！';document.getElementById('best-msg').textContent='';}}
+function showRecord(){const e=globalRecord||{};const easy=e.easy||{};const hard=e.hard||{};const s1=document.getElementById('best-rec');const s2=document.getElementById('best-msg');const s3=document.getElementById('best-rec2');if(easy.time&&easy.time!=='暂无'){s1.textContent='🏆 简单: '+easy.time+'s';s2.textContent=easy.msg?'「'+easy.msg+'」':'';}else{s1.textContent='🏆 简单: 暂无记录';s2.textContent='';}if(hard.time&&hard.time!=='暂无'){s3.textContent='🏆 困难: '+hard.time+'s '+(hard.msg?'「'+hard.msg+'」':'');}else{s3.textContent='🏆 困难: 暂无记录';}}
 loadRecord();
 
 // ===== 按键方案 =====
